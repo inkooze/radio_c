@@ -4,7 +4,7 @@
 void mult(int x, int y) {
     printf("Вычисляем выражение %i * %i\n\n", x, y);
 
-    int minus = x < 0 && y >= 0 || y < 0 && x >= 0;
+    int minus = x < 0 ^ y < 0;
     x = x >= 0 ? x : -x;
     y = y >= 0 ? y : -y;
 
