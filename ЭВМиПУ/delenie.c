@@ -2,27 +2,33 @@
 #include <windows.h>
 
 // Первый алгоритм (с восстановлением остатка)
-void division1(unsigned RG1, unsigned RG2) {
-    unsigned remain = 0;
-    unsigned RG3 = RG1;
-    int CT = 16;
+void division1(int RG1, int RG2) {
+    int RG3 = 0;
+    int CT = 16 + 1;
 
-    printf("Первый алгоритм (с восстановлением остатка)\nНачальные значения: RG1 = %i, RG2 = %i, RG3 = %i, остаток = %i\n", RG1, RG2, RG3, remain);
+    printf("Первый алгоритм (с восстановлением остатка)\nНачальные значения: RG1 = %i, RG2 = %i, RG3 = %i\n", RG1, RG2, RG3);
 
     while (CT) {
-        remain = (remain << 1) | ((RG3 >> 15) & 1);
-        RG3 <<= 1;
+        RG1 -= RG2 << 16;
 
-        if (remain >= RG2) {
-            remain = remain - RG2;
+        RG3 <<= 1;
+        if (RG1 >= 0) {
             RG3 |= 1;
+        } else {
+            RG1 += RG2 << 16;
         }
 
-        CT--;
+        RG1 <<= 1;
 
-        printf("\t- RG1 = %i, RG2 = %i, RG3 = %i, остаток = %i\n", RG1, RG2, RG3, remain);
+        CT--;
+        printf("\t- RG1 = %i, RG2 = %i, RG3 = %i\n", RG1, RG2, RG3);
     }
-    printf("Результат первого алгоритма (с восстановлением остатка): %i, %i (ост.)\n\n", RG3 & 0xFFFF, remain & 0xFFFF);
+
+    if (RG3 > 0x0000FFFF) {
+        printf("Ошибка вычисления: переполнение!\n");
+    } else {
+        printf("Результат второго алгоритма (без восстановления остатка): %i, %i (ост.)\n\n", RG3, RG1 >> 17);
+    }
 }
 
 // Второй алгоритм (без восстановления)
