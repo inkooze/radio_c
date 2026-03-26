@@ -20,7 +20,7 @@ void division1(unsigned RG1, unsigned RG2) {
 
         CT--;
 
-        printf("- RG1 = %i, RG2 = %i, RG3 = %i, остаток = %i\n", RG1, RG2, RG3, remain);
+        printf("\t- RG1 = %i, RG2 = %i, RG3 = %i, остаток = %i\n", RG1, RG2, RG3, remain);
     }
     printf("Результат первого алгоритма (с восстановлением остатка): %i, %i (ост.)\n\n", RG3 & 0xFFFF, remain & 0xFFFF);
 }
@@ -55,7 +55,7 @@ void division2(int RG1, int RG2) {
         }
 
         CT--;
-        printf("- RG1 = %i, RG2 = %i, RG3 = %i\n", RG1, RG2, RG3);
+        printf("\t- RG1 = %i, RG2 = %i, RG3 = %i\n", RG1, RG2, RG3);
     }
 
     if (RG3 > 0x0000FFFF) {
@@ -70,10 +70,8 @@ int main(void) {
 
     int A, B;
 
-    printf("A:");
-    scanf("%i", &A);
-    printf("B:");
-    scanf("%i", &B);
+    printf("Делимое: "); scanf("%i", &A);
+    printf("Делитель: "); scanf("%i", &B);
 
     if (A >= 0 && A <= 65535 && B > 0 && B <= 256) {
         printf("Вычисляем выражение %i / %i\n\n", A, B);
