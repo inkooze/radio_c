@@ -69,14 +69,15 @@ fpn slozhenie(fpn A, fpn B) {
     printf("- A: %.10g (S = %d; E = 0x%04X; M = 0x%013llX)\n", fpn_to_double(A), A.znak, A.exponent, A.mantissa);
     printf("- B: %.10g (S = %d; E = 0x%04X; M = 0x%013llX)\n", fpn_to_double(B), B.znak, B.exponent, B.mantissa);
 
+    unsigned long long M1 = A.mantissa;
+    unsigned long long M2 = B.mantissa;
+
     // Если один из операндов 0, значит возвращаем другой
     if (A.mantissa == 0) return B;
     if (B.mantissa == 0) return A;
 
     unsigned int E3 = (A.exponent > B.exponent) ? A.exponent : B.exponent;
     long dE = (long)A.exponent - (long)B.exponent;
-    unsigned long long M1 = A.mantissa;
-    unsigned long long M2 = B.mantissa;
 
     if (dE != 0) {
         if (dE > 0) {
@@ -97,7 +98,7 @@ fpn slozhenie(fpn A, fpn B) {
         M3 = M1 + M2;
         S3 = A.znak;
 
-        if (M3 & (1ULL << 53)) {
+        if (M3 & (1ull << 53)) {
             M3 >>= 1;
             E3++;
             printf("    - Переполнение мантиссы, сдвиг вправо, E3 + 1 = 0x%04X\n", E3);
@@ -113,10 +114,9 @@ fpn slozhenie(fpn A, fpn B) {
 
         if (M3 != 0) {
             int k = 0;
-            while ((M3 & (1ULL << 52)) == 0) {
+            while ((M3 & (1ull << 52)) == 0 || k > 60) {
                 M3 <<= 1;
                 k++;
-                if (k > 60) break;
             }
             E3 -= k;
             printf("    - Нормализация влево на %d разрядов, E3 = 0x%04X\n", k, E3);
@@ -131,7 +131,8 @@ fpn slozhenie(fpn A, fpn B) {
     }
 
     fpn result = {S3, E3, M3};
-    printf("- Результат: %.10g (S = %d; E = 0x%04X; M = 0x%013llX)\n", fpn_to_double(result), result.znak, result.exponent, result.mantissa);
+    printf("- Результат: %.10g (S = %d; E = 0x%04X; M = 0x%013llX)\n", fpn_to_double(result),
+        result.znak, result.exponent, result.mantissa);
 
     return result;
 }
