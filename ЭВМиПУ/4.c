@@ -8,94 +8,88 @@
 typedef struct {
     int znak;
     unsigned int exponent;
-    unsigned long long mantissa;
+    double mantissa;
 } fpn;
 
 // Определение данных (структуры) для числа
-fpn double_to_fpn(double db_num) {
-    fpn fp_num = {0, 0, 0};
+fpn double_to_fpn(double double_num) {
+    fpn fpn_num = {0, 0, 0};
 
-    if (db_num == 0.0) return fp_num;
+    if (double_num == 0) return fpn_num;
 
-    // Знак
-    fp_num.znak = (db_num < 0.0) ? 1 : 0;
+    fpn_num.znak = (double_num < 0) ? 1 : 0;
 
-    //
-    int exp = 0;
-    double mant = fabs(db_num);
+    int E = 0;
+    double M = fabs(double_num);
 
-    while (mant >= 1.0) {
-        mant /= 2.0;
-        exp++;
+    while (M >= 1) {
+        M /= 2;
+        E++;
     }
 
-    while (mant < 0.5) {
-        mant *= 2.0;
-        exp--;
+    while (M < 0.5) {
+        M *= 2;
+        E--;
     }
 
-    fp_num.exponent = (unsigned int)(exp - 1 + 1023);
-    fp_num.mantissa = (unsigned long long)(mant * 2.0 * (1ull << 52) + 0.5);
+    fpn_num.exponent = E - 1 + 1023;
+    fpn_num.mantissa = M * 2 * (1ull << 52);
 
-    return fp_num;
+    return fpn_num;
 }
 
-double fpn_to_double(fpn fp_num) {
-    if (fp_num.mantissa == 0) return 0.0;
+double fpn_to_double(fpn fpn_num) {
+    if (fpn_num.mantissa == 0) return 0;
 
-    double znak = (double)fp_num.mantissa / (double)(1ull << 52);
+    double Z = fpn_num.mantissa / (1ull << 52);
+    double double_num = (fpn_num.znak == 1) ? -Z : Z;
 
-    double db_num = (fp_num.znak == 1) ? -znak : znak;
+    int E = fpn_num.exponent - 1023;
 
-    int exp = (int)fp_num.exponent - 1023;
-
-    if (exp >= 0) {
-        for (int i = 0; i < exp; i++) {
-            db_num *= 2.0;
+    if (E >= 0) {
+        for (int i = 0; i < E; i++) {
+            double_num *= 2;
         }
     } else {
-        int n = -exp;
+        int n = -E;
         for (int i = 0; i < n; i++) {
-            db_num /= 2.0;
+            double_num /= 2;
         }
     }
 
-    return db_num;
+    return double_num;
 }
 
 // \\ // \\ //
 
 fpn umnozhenie(fpn A, fpn B) {
-    if (A.mantissa == 0 || B.mantissa == 0) {
+    unsigned long long M1 = A.mantissa;
+    unsigned long long M2 = B.mantissa;
+
+    if (M1 == 0 || M2 == 0) {
         printf("0 (S = 0, E = 0, M = 0)\n");
         fpn zero = {0, 0, 0};
         return zero;
         
     } else {
         int S3 = A.znak ^ B.znak;
-
         unsigned int E3 = A.exponent + B.exponent - 1023;
 
-        unsigned long long M1 = A.mantissa;
-        unsigned long long M2 = B.mantissa;
+        unsigned long long M3 = 0;
 
-        unsigned long long M1_H = M1 >> 32;
-        unsigned long long M1_L = M1 & 0xFFFFFFFFull;
-        unsigned long long M2_H = M2 >> 32;
-        unsigned long long M2_L = M2 & 0xFFFFFFFFull;
+        // Мл. СЧП
+        for (int i = 0; i < 53; i++) {
+            if (M2 & 1) M3 += M1;
 
-        unsigned long long ost = (M1_L * M2_L) >> 32; // Младшие 32 бита нужны для округления, но оно здесь не используется
-        unsigned long long mid = M1_H * M2_L + M1_L * M2_H + ost; // Cредние 32 бита произведения
-        unsigned long long high = M1_H * M2_H + (mid >> 32); // Cтаршие 64 бита произведения
+            M2 >>= 1;
 
-        unsigned long long M3;
+            if (i < 52) M3 >>= 1;
+        }
 
-        // Проверка 105 бита всего произведения, если он 1, значит произведение >2^105, значит в норм. виде число >= 2
-        if (high & (1ull << 41)) {
+        // Нормализуем, если 53-й бит установлен (т.е число >= 2)
+        if (M3 >> 53) {
+            M3 >>= 1;
             E3++;
-            M3 = (high << 11) | ((mid & 0xFFFFFFFFull) >> 21);
-        } else {
-            M3 = (high << 12) | ((mid & 0xFFFFFFFFull) >> 20);
         }
 
         fpn res = {S3, E3, M3};
@@ -107,41 +101,39 @@ fpn umnozhenie(fpn A, fpn B) {
 // \\ // \\ //
 
 fpn delenie(fpn A, fpn B) {
-    if (B.mantissa == 0) {
+    unsigned long long M1 = A.mantissa;
+    unsigned long long M2 = B.mantissa;
+
+    if (M2 == 0) {
         printf("Делить на ноль нельзя!\n");
 
-    } else if (A.mantissa == 0) {
+    } else if (M1 == 0) {
         printf("0 (S = 0, E = 0, M = 0)\n\n");
         fpn zero = {0, 0, 0};
         return zero;
 
     } else {
         int S3 = A.znak ^ B.znak;
+        unsigned int E3 = A.exponent - B.exponent + 1023;
 
-        unsigned int E3 = A.exponent + B.exponent - 1023;
+        unsigned long long M3 = 0;
 
-        unsigned long long M1 = A.mantissa;
-        unsigned long long M2 = B.mantissa;
+        // С восст. ост.
+        for (int i = 0; i < 53; i++) {
+            M3 <<= 1;
 
-        unsigned long long M3_full = 0;
-        unsigned long long rem = M1;
-
-        for (int i = 0; i < 54; i++) {
-            M3_full <<= 1;
-            if (rem >= M2) {
-                rem -= M2;
-                M3_full |= 1;
+            if (M1 >= M2) {
+                M3 |= 1;
+                M1 -= M2;
             }
-            rem <<= 1;
+
+            M1 <<= 1;
         }
 
-        unsigned long long M3;
-
-        if (M3_full & (1ull << 53)) {
-            M3 = M3_full >> 1;
-        } else {
+        // Нормализация, если явная единица не в 52 бите
+        if (!(M3 >> 52)) {
+            M3 <<= 1;
             E3--;
-            M3 = M3_full;
         }
 
         fpn res = {S3, E3, M3};
@@ -164,13 +156,13 @@ int main() {
     fpn A = double_to_fpn(a);
     fpn B = double_to_fpn(b);
 
-    printf("- A: %f (S = %d, E = %u, M = %llu)\n", fpn_to_double(A), A.znak, A.exponent, A.mantissa);
-    printf("- B: %f (S = %d, E = %u, M = %llu)\n", fpn_to_double(B), B.znak, B.exponent, B.mantissa);
+    printf("- A: %f (S = %d, E = %u, M = %f)\n", fpn_to_double(A), A.znak, A.exponent, A.mantissa);
+    printf("- B: %f (S = %d, E = %u, M = %f)\n", fpn_to_double(B), B.znak, B.exponent, B.mantissa);
 
-    printf("\nУмножение: ");
+    printf("\n- Умножение: ");
     umnozhenie(A, B);
 
-    printf("\nДеление: ");
+    printf("- Деление: ");
     delenie(A, B);
 
     return 0;
